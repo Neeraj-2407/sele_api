@@ -102,5 +102,16 @@ wait.until(EC.staleness_of(wings_analytics_button))
 print("Wings Analytics page loaded!")
 time.sleep(5)
 
+analytics_card = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "/html/body/app-root/lib-analytics-recent-users/div/div[2]/div/div[2]/dx-scroll-view/div[1]/div/div[1]/div[2]/div/div/mat-card/mat-card-content/div[1]"
+    ))
+)
+
+analytics_card.click()
+
+print("Analytics card clicked!")
+
 input("Press Enter to close browser...")
 driver.quit()

@@ -82,5 +82,25 @@ driver.execute_script("arguments[0].click();", logout_button)
 
 print("Login and Logout successful!")
 
+# -----------------------------
+# Click Wings Analytics Button
+# -----------------------------
+wings_analytics_button = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "/html/body/app-root/app-recent-users01/div/div[3]/div[1]"
+    ))
+)
+
+wings_analytics_button.click()
+
+print("Wings Analytics button clicked!")
+
+# Optional: Wait few seconds to load next page
+wait.until(EC.staleness_of(wings_analytics_button))
+
+print("Wings Analytics page loaded!")
+time.sleep(5)
+
 input("Press Enter to close browser...")
 driver.quit()

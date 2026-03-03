@@ -100,7 +100,7 @@ print("Wings Analytics button clicked!")
 wait.until(EC.staleness_of(wings_analytics_button))
 
 print("Wings Analytics page loaded!")
-time.sleep(5)
+time.sleep(2)
 
 analytics_card = wait.until(
     EC.element_to_be_clickable((
@@ -110,8 +110,27 @@ analytics_card = wait.until(
 )
 
 analytics_card.click()
+time.sleep(20)
 
 print("Analytics card clicked!")
+
+# -----------------------------
+# Click "Sales" Accordion
+# -----------------------------
+sales_button = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "//span[text()='Sales']/parent::div"
+    ))
+)
+
+# Scroll into view (important)
+driver.execute_script("arguments[0].scrollIntoView(true);", sales_button)
+
+# Click
+driver.execute_script("arguments[0].click();", sales_button)
+
+print("Sales button clicked successfully!")
 
 input("Press Enter to close browser...")
 driver.quit()

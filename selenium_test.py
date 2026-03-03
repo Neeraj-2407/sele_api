@@ -132,5 +132,32 @@ driver.execute_script("arguments[0].click();", sales_button)
 
 print("Sales button clicked successfully!")
 
+# -----------------------------
+# Click "Descriptive"
+# -----------------------------
+descriptive_button = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "//span[normalize-space()='Descriptive']"
+    ))
+)
+
+# Scroll into view (important for Angular)
+driver.execute_script("arguments[0].scrollIntoView(true);", descriptive_button)
+
+# Click using JS (safer)
+driver.execute_script("arguments[0].click();", descriptive_button)
+
+print("Descriptive clicked... waiting for page to load")
+
+# -----------------------------
+# Wait Until Page Fully Loads
+# -----------------------------
+
+# Option 1: Wait until old element disappears
+wait.until(EC.staleness_of(descriptive_button))
+
+print("✅ Descriptive page loaded successfully!")
+
 input("Press Enter to close browser...")
 driver.quit()

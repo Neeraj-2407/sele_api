@@ -273,7 +273,6 @@ def summarize_dictionary(data_dict):
 if kpi_data and isinstance(kpi_data, dict):
 
     summary = summarize_dictionary(kpi_data)
-
     final_summary = summary
 
     print("\nData Type:", type(final_summary))
@@ -282,6 +281,58 @@ if kpi_data and isinstance(kpi_data, dict):
 
 else:
     print("❌ No KPI data available to summarize.")
-    
+    final_summary = None
+
+
+# -----------------------------
+# Send Email Function
+# -----------------------------
+
+def send_email(summary_text):
+
+    api_endpoint = "http://127.0.0.1:8000/send-email/"  # ✅ Your server runs on 8000
+
+    payload = {
+        "email": "neerajwings1@gmail.com",
+        "cc": "neerajsainandigama@gmail.com",
+        "subject": "Automated Business Summary Report",
+        "message": summary_text
+    }
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(
+            api_endpoint,
+            headers=headers,
+            data=json.dumps(payload)
+        )
+
+        if response.status_code == 200:
+            print("✅ Email sent successfully")
+        else:
+            print("❌ Failed to send email")
+            print("Status Code:", response.status_code)
+            print("Response:", response.text)
+
+    except Exception as e:
+        print("❌ Error occurred while sending email:", e)
+
+
+# -----------------------------
+# CALL EMAIL FUNCTION
+# -----------------------------
+
+if final_summary and len(final_summary.strip()) > 0:
+    send_email(final_summary)
+else:
+    print("❌ Summary is empty. Email not sent.")
+
+
+input("Press Enter to close browser...")
+driver.quit()
+        
 input("Press Enter to close browser...")
 driver.quit()

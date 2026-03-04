@@ -186,5 +186,36 @@ wait.until(
 
 print("✅ Descriptive page loaded successfully!")
 
+import re
+
+try:
+    # -----------------------------
+    # Locate Key Metrics Section
+    # -----------------------------
+    sub_section = wait.until(
+        EC.presence_of_element_located((
+            By.XPATH,
+            "//div[.//span[normalize-space()='Key Metrics']]"
+        ))
+    )
+
+    # Get full HTML
+    raw_html = sub_section.get_attribute("outerHTML")
+
+    # -----------------------------
+    # Remove <script> and <style> tags
+    # -----------------------------
+    clean_html = re.sub(r"<script.*?>.*?</script>", "", raw_html, flags=re.DOTALL)
+    clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL)
+
+    # Store cleaned HTML in variable
+    sub_heading_html = clean_html
+
+    print("✅ Successfully scraped the HTML content.")
+
+except Exception as e:
+    print("❌ Failed to scrape HTML content.")
+    print("Error:", e)
+
 input("Press Enter to close browser...")
 driver.quit()

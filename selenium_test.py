@@ -62,25 +62,27 @@ sign_in_button = wait.until(
     ))
 )
 sign_in_button.click()
-time.sleep(30)
+
+print("Sign In clicked... waiting for dashboard")
 
 # -----------------------------
-# Wait for Login Success
-# (Wait for logout icon to appear)
+# Wait Until Login Completes
 # -----------------------------
-logout_button = wait.until(
-    EC.presence_of_element_located((
+logout_button = WebDriverWait(driver, 60).until(
+    EC.element_to_be_clickable((
         By.XPATH,
         "//img[contains(@src,'log-out.svg')]"
     ))
 )
+
+print("✅ Login successful!")
 
 # -----------------------------
 # Click Logout
 # -----------------------------
 driver.execute_script("arguments[0].click();", logout_button)
 
-print("Login and Logout successful!")
+print("Logout clicked successfully!")
 
 # -----------------------------
 # Click Wings Analytics Button
@@ -110,52 +112,77 @@ analytics_card = wait.until(
 )
 
 analytics_card.click()
-time.sleep(20)
 
-print("Analytics card clicked!")
+print("Analytics card clicked... waiting for next page")
+
+# Wait until old element becomes stale (DOM refreshed)
+wait.until(EC.staleness_of(analytics_card))
+
+print("Next page loaded successfully!")
 
 # -----------------------------
-# Click "Sales" Accordion
+# Click Enquiries
+# -----------------------------
+enquiries_button = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "//div[contains(@class,'accordion-title')]//span[normalize-space()='Enquiries']"
+    ))
+)
+
+driver.execute_script("arguments[0].scrollIntoView({block:'center'});", enquiries_button)
+driver.execute_script("arguments[0].click();", enquiries_button)
+
+print("Enquiries clicked...")
+
+# Wait until Sales becomes visible
+wait.until(
+    EC.visibility_of_element_located((
+        By.XPATH,
+        "//div[contains(@class,'accordion-title')]//span[normalize-space()='Sales']"
+    ))
+)
+
+# -----------------------------
+# Click Sales
 # -----------------------------
 sales_button = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
-        "//span[text()='Sales']/parent::div"
+        "//div[contains(@class,'accordion-title')]//span[normalize-space()='Sales']"
     ))
 )
 
-# Scroll into view (important)
-driver.execute_script("arguments[0].scrollIntoView(true);", sales_button)
-
-# Click
+driver.execute_script("arguments[0].scrollIntoView({block:'center'});", sales_button)
 driver.execute_script("arguments[0].click();", sales_button)
 
 print("Sales button clicked successfully!")
 
 # -----------------------------
-# Click "Descriptive"
+# Click Descriptive (Full XPath)
 # -----------------------------
 descriptive_button = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
-        "//span[normalize-space()='Descriptive']"
+        "/html/body/app-root/lib-analytics-welcome/div/div[2]/aside/div/div[2]/dx-accordion/div/div[3]/div[2]/div/button"
     ))
 )
 
-# Scroll into view (important for Angular)
-driver.execute_script("arguments[0].scrollIntoView(true);", descriptive_button)
+# Scroll into view (important for Angular side menus)
+driver.execute_script("arguments[0].scrollIntoView({block:'center'});", descriptive_button)
 
-# Click using JS (safer)
+# Small stabilization (optional)
+time.sleep(1)
+
+# Click using JS (safer for Angular components)
 driver.execute_script("arguments[0].click();", descriptive_button)
 
-print("Descriptive clicked... waiting for page to load")
+print("Descriptive clicked... waiting for page content")
 
-# -----------------------------
-# Wait Until Page Fully Loads
-# -----------------------------
-
-# Option 1: Wait until old element disappears
-wait.until(EC.staleness_of(descriptive_button))
+# Wait for new Angular content to load
+wait.until(
+    EC.visibility_of_element_located((By.CLASS_NAME, "content-area"))
+)
 
 print("✅ Descriptive page loaded successfully!")
 

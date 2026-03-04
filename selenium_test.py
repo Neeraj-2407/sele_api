@@ -185,37 +185,103 @@ wait.until(
 )
 
 print("✅ Descriptive page loaded successfully!")
+# -----------------------------
+# Scrape KPI Card Titles & Values
+# -----------------------------
 
-import re
+kpi_data = {}   # Dictionary variable
 
 try:
-    # -----------------------------
-    # Locate Key Metrics Section
-    # -----------------------------
-    sub_section = wait.until(
+    # Locate Key Metrics section
+    key_metrics_section = wait.until(
         EC.presence_of_element_located((
             By.XPATH,
             "//div[.//span[normalize-space()='Key Metrics']]"
         ))
     )
 
-    # Get full HTML
-    raw_html = sub_section.get_attribute("outerHTML")
+    # Get all KPI card components
+    cards = key_metrics_section.find_elements(By.XPATH, ".//app-kpicharts")
 
-    # -----------------------------
-    # Remove <script> and <style> tags
-    # -----------------------------
-    clean_html = re.sub(r"<script.*?>.*?</script>", "", raw_html, flags=re.DOTALL)
-    clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL)
+    for card in cards:
+        try:
+            # Extract title
+            title = card.find_element(By.XPATH, ".//div[1]//span").text.strip()
 
-    # Store cleaned HTML in variable
-    sub_heading_html = clean_html
+            # Extract value
+            value = card.find_element(By.XPATH, ".//div[2]//span").text.strip()
 
-    print("✅ Successfully scraped the HTML content.")
+            if title and value:
+                kpi_data[title] = value
+
+        except:
+            continue
+
+    print("✅ KPI Data Successfully Scraped.\n")
 
 except Exception as e:
-    print("❌ Failed to scrape HTML content.")
+    print("❌ Failed to scrape KPI data.")
     print("Error:", e)
 
+# -----------------------------
+# Print Dictionary
+# -----------------------------
+print("KPI Dictionary:\n")
+print(kpi_data)
+
+import requests
+import json
+
+def summarize_dictionary(data_dict):
+    """
+    Sends dictionary data to LLM API and returns summarized text.
+    """
+
+    url = "http://192.168.0.200:11434/api/generate"
+
+    payload = {
+        "model": "llama3.2:3b",
+        "prompt": f"Convert the following KPI dictionary into a clear business summary:\n\n{json.dumps(data_dict, indent=2)}",
+        "stream": False
+    }
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+        if response.status_code == 200:
+            result = response.json()
+            summarized_text = result.get("response", "")
+            print("✅ API Call Successful")
+            return summarized_text
+        else:
+            print("❌ API Error:", response.status_code)
+            return None
+
+    except Exception as e:
+        print("❌ Exception occurred:", e)
+        return None
+
+
+# -----------------------------
+# Use Your Scraped Dictionary
+# -----------------------------
+
+if kpi_data and isinstance(kpi_data, dict):
+
+    summary = summarize_dictionary(kpi_data)
+
+    final_summary = summary
+
+    print("\nData Type:", type(final_summary))
+    print("\nSummarized Text:\n")
+    print(final_summary)
+
+else:
+    print("❌ No KPI data available to summarize.")
+    
 input("Press Enter to close browser...")
 driver.quit()

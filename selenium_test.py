@@ -6,6 +6,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+import requests
+import json
 # -----------------------------
 # Start Browser
 # -----------------------------
@@ -192,9 +194,6 @@ print("✅ Descriptive page loaded successfully!")
 # FUNCTION: Scrape KPI → Summarize → Send Email
 # =====================================================
 
-import requests
-import json
-
 def process_kpi_data(driver, wait):
 
     # -----------------------------
@@ -230,7 +229,6 @@ def process_kpi_data(driver, wait):
         print("❌ Failed to scrape KPI data.")
         print("Error:", e)
         return
-
 
     # -----------------------------
     # 2️⃣ SUMMARIZE USING LLM

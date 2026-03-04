@@ -184,155 +184,127 @@ wait.until(
     EC.visibility_of_element_located((By.CLASS_NAME, "content-area"))
 )
 
+
+
 print("✅ Descriptive page loaded successfully!")
-# -----------------------------
-# Scrape KPI Card Titles & Values
-# -----------------------------
 
-kpi_data = {}   # Dictionary variable
-
-try:
-    # Locate Key Metrics section
-    key_metrics_section = wait.until(
-        EC.presence_of_element_located((
-            By.XPATH,
-            "//div[.//span[normalize-space()='Key Metrics']]"
-        ))
-    )
-
-    # Get all KPI card components
-    cards = key_metrics_section.find_elements(By.XPATH, ".//app-kpicharts")
-
-    for card in cards:
-        try:
-            # Extract title
-            title = card.find_element(By.XPATH, ".//div[1]//span").text.strip()
-
-            # Extract value
-            value = card.find_element(By.XPATH, ".//div[2]//span").text.strip()
-
-            if title and value:
-                kpi_data[title] = value
-
-        except:
-            continue
-
-    print("✅ KPI Data Successfully Scraped.\n")
-
-except Exception as e:
-    print("❌ Failed to scrape KPI data.")
-    print("Error:", e)
-
-# -----------------------------
-# Print Dictionary
-# -----------------------------
-print("KPI Dictionary:\n")
-print(kpi_data)
+# =====================================================
+# FUNCTION: Scrape KPI → Summarize → Send Email
+# =====================================================
 
 import requests
 import json
 
-def summarize_dictionary(data_dict):
-    """
-    Sends dictionary data to LLM API and returns summarized text.
-    """
+def process_kpi_data(driver, wait):
 
+    # -----------------------------
+    # 1️⃣ SCRAPE KPI DATA
+    # -----------------------------
+    kpi_data = {}
+
+    try:
+        key_metrics_section = wait.until(
+            EC.presence_of_element_located((
+                By.XPATH,
+                "//div[.//span[normalize-space()='Key Metrics']]"
+            ))
+        )
+
+        cards = key_metrics_section.find_elements(By.XPATH, ".//app-kpicharts")
+
+        for card in cards:
+            try:
+                title = card.find_element(By.XPATH, ".//div[1]//span").text.strip()
+                value = card.find_element(By.XPATH, ".//div[2]//span").text.strip()
+
+                if title and value:
+                    kpi_data[title] = value
+
+            except:
+                continue
+
+        print("✅ KPI Data Successfully Scraped.")
+        print("KPI Dictionary:", kpi_data)
+
+    except Exception as e:
+        print("❌ Failed to scrape KPI data.")
+        print("Error:", e)
+        return
+
+
+    # -----------------------------
+    # 2️⃣ SUMMARIZE USING LLM
+    # -----------------------------
     url = "http://192.168.0.200:11434/api/generate"
 
     payload = {
         "model": "llama3.2:3b",
-        "prompt": f"Convert the following KPI dictionary into a clear business summary:\n\n{json.dumps(data_dict, indent=2)}",
+        "prompt": f"Convert the following KPI dictionary into a clear business summary:\n\n{json.dumps(kpi_data, indent=2)}",
         "stream": False
     }
 
-    headers = {
-        "Content-Type": "application/json"
-    }
-
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        response = requests.post(url, json=payload)
 
         if response.status_code == 200:
             result = response.json()
-            summarized_text = result.get("response", "")
-            print("✅ API Call Successful")
-            return summarized_text
+            final_summary = result.get("response", "").strip()
+
+            if not final_summary:
+                print("❌ Summary is empty.")
+                return
+
+            print("✅ Summary Generated Successfully")
+            print("\nSummarized Text:\n")
+            print(final_summary)
+
         else:
             print("❌ API Error:", response.status_code)
-            return None
+            print(response.text)
+            return
 
     except Exception as e:
-        print("❌ Exception occurred:", e)
-        return None
+        print("❌ Exception during summary:", e)
+        return
 
 
-# -----------------------------
-# Use Your Scraped Dictionary
-# -----------------------------
-
-if kpi_data and isinstance(kpi_data, dict):
-
-    summary = summarize_dictionary(kpi_data)
-    final_summary = summary
-
-    print("\nData Type:", type(final_summary))
-    print("\nSummarized Text:\n")
-    print(final_summary)
-
-else:
-    print("❌ No KPI data available to summarize.")
-    final_summary = None
-
-
-# -----------------------------
-# Send Email Function
-# -----------------------------
-
-def send_email(summary_text):
-
-    api_endpoint = "http://127.0.0.1:8000/send-email/"  # ✅ Your server runs on 8000
-
-    payload = {
-        "email": "neerajwings1@gmail.com",
-        "cc": "neerajsainandigama@gmail.com",
-        "subject": "Automated Business Summary Report",
-        "message": summary_text
-    }
-
-    headers = {
-        "Content-Type": "application/json"
-    }
-
+    # -----------------------------
+    # 3️⃣ SEND EMAIL
+    # -----------------------------
     try:
-        response = requests.post(
-            api_endpoint,
-            headers=headers,
-            data=json.dumps(payload)
+        email_payload = {
+            "email": "neerajwings1@gmail.com",
+            "cc": "neerajsainandigama@gmail.com",
+            "subject": "Automated Business Summary Report",
+            "message": final_summary
+        }
+
+        email_response = requests.post(
+            "http://127.0.0.1:8000/send-email/",
+            json=email_payload
         )
 
-        if response.status_code == 200:
+        if email_response.status_code == 200:
             print("✅ Email sent successfully")
         else:
             print("❌ Failed to send email")
-            print("Status Code:", response.status_code)
-            print("Response:", response.text)
+            print("Status Code:", email_response.status_code)
+            print("Response:", email_response.text)
 
     except Exception as e:
-        print("❌ Error occurred while sending email:", e)
+        print("❌ Error sending email:", e)
 
 
-# -----------------------------
-# CALL EMAIL FUNCTION
-# -----------------------------
+# =====================================================
+# CALL THE FUNCTION
+# =====================================================
 
-if final_summary and len(final_summary.strip()) > 0:
-    send_email(final_summary)
-else:
-    print("❌ Summary is empty. Email not sent.")
+process_kpi_data(driver, wait)
 
 
-input("Press Enter to close browser...")
-driver.quit()
-        
+# =====================================================
+# CLOSE BROWSER
+# =====================================================
+
 input("Press Enter to close browser...")
 driver.quit()

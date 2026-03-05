@@ -14,7 +14,7 @@ import json
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver.maximize_window()
 
-driver.get("http://192.168.0.152:4200")
+driver.get("http://localhost:4200/")
 
 wait = WebDriverWait(driver, 20)
 
@@ -124,23 +124,29 @@ print("Logout clicked successfully!")
 # -----------------------------
 # Click Wings Analytics Button
 # -----------------------------
+
+wings_xpath = "/html/body/app-root/app-recent-users01/div/div[3]/div[1]"
+
+# Wait for element to appear
 wings_analytics_button = wait.until(
-    EC.element_to_be_clickable((
-        By.XPATH,
-        "/html/body/app-root/app-recent-users01/div/div[3]/div[1]"
-    ))
+    EC.presence_of_element_located((By.XPATH, wings_xpath))
 )
 
-wings_analytics_button.click()
+# Scroll to element (important for Angular dashboards)
+driver.execute_script("arguments[0].scrollIntoView({block:'center'});", wings_analytics_button)
+
+# Wait until clickable
+wait.until(EC.element_to_be_clickable((By.XPATH, wings_xpath)))
+
+# Click using JS (more reliable in Angular)
+driver.execute_script("arguments[0].click();", wings_analytics_button)
 
 print("Wings Analytics button clicked!")
 
-# Optional: Wait few seconds to load next page
-wait.until(EC.staleness_of(wings_analytics_button))
-
-print("Wings Analytics page loaded!")
+# Wait until page loads by checking URL or new element
 time.sleep(2)
 
+print("Wings Analytics page loaded!")
 # -----------------------------
 # Click Analytics Card
 # -----------------------------

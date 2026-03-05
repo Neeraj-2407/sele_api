@@ -68,6 +68,41 @@ sign_in_button.click()
 print("Sign In clicked... waiting for dashboard")
 
 # -----------------------------
+# Handle Alert Popup
+# -----------------------------
+from selenium.common.exceptions import NoAlertPresentException
+import time
+
+print("Sign In clicked... waiting for dashboard")
+
+# -----------------------------
+# Wait while loading panel exists
+# -----------------------------
+while True:
+    try:
+        # Check for alert popup
+        alert = driver.switch_to.alert
+        print("⚠ Alert detected:", alert.text)
+        alert.accept()
+        print("✅ Alert accepted")
+
+    except NoAlertPresentException:
+        pass
+
+    # Check if loading panel still exists
+    loading_elements = driver.find_elements(
+        By.XPATH,
+        "//div[contains(@class,'dx-loadpanel-message') and contains(text(),'Loading')]"
+    )
+
+    if len(loading_elements) == 0:
+        break
+
+    print("⏳ Loading still in progress...")
+    time.sleep(2)
+
+print("✅ Loading finished")
+# -----------------------------
 # Wait Until Login Completes
 # -----------------------------
 logout_button = WebDriverWait(driver, 60).until(
@@ -106,6 +141,9 @@ wait.until(EC.staleness_of(wings_analytics_button))
 print("Wings Analytics page loaded!")
 time.sleep(2)
 
+# -----------------------------
+# Click Analytics Card
+# -----------------------------
 analytics_card = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -113,29 +151,39 @@ analytics_card = wait.until(
     ))
 )
 
-analytics_card.click()
+driver.execute_script("arguments[0].scrollIntoView({block:'center'});", analytics_card)
+driver.execute_script("arguments[0].click();", analytics_card)
 
-print("Analytics card clicked... waiting for next page")
-
-# Wait until old element becomes stale (DOM refreshed)
-wait.until(EC.staleness_of(analytics_card))
-
-print("Next page loaded successfully!")
+print("Analytics card clicked...")
 
 # -----------------------------
-# Click Enquiries
+# Wait for Loading to Finish
 # -----------------------------
-enquiries_button = wait.until(
+try:
+    WebDriverWait(driver, 60).until(
+        EC.invisibility_of_element_located((
+            By.XPATH,
+            "//div[contains(@class,'dx-loadpanel-message') and contains(text(),'Loading')]"
+        ))
+    )
+    print("Loading finished")
+except:
+    print("Loading element not detected or already finished")
+
+# -----------------------------
+# Wait for Enquiries Section
+# -----------------------------
+enquiries_button = WebDriverWait(driver, 60).until(
     EC.element_to_be_clickable((
         By.XPATH,
-        "//div[contains(@class,'accordion-title')]//span[normalize-space()='Enquiries']"
+        "//span[normalize-space()='Enquiries']"
     ))
 )
 
 driver.execute_script("arguments[0].scrollIntoView({block:'center'});", enquiries_button)
 driver.execute_script("arguments[0].click();", enquiries_button)
 
-print("Enquiries clicked...")
+print("Enquiries clicked successfully")
 
 # Wait until Sales becomes visible
 wait.until(

@@ -125,31 +125,18 @@ print("Logout clicked successfully!")
 # Click Wings Analytics Button
 # -----------------------------
 
-wings_xpath = "/html/body/app-root/app-recent-users01/div/div[3]/div[1]"
-
-# Wait for element to appear
-wings_analytics_button = wait.until(
-    EC.presence_of_element_located((By.XPATH, wings_xpath))
+wings_analytics_button= wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "/html/body/app-root/app-recent-users01/div/div[3]/div[1]"
+    ))
 )
 
-# Scroll to element (important for Angular dashboards)
-driver.execute_script("arguments[0].scrollIntoView({block:'center'});", wings_analytics_button)
-
-# Wait until clickable
-wait.until(EC.element_to_be_clickable((By.XPATH, wings_xpath)))
-
-# Click using JS (more reliable in Angular)
 driver.execute_script("arguments[0].click();", wings_analytics_button)
 
-print("Wings Analytics button clicked!")
+print("Wings Analytics clicked")
 
-# Wait until page loads by checking URL or new element
-time.sleep(2)
-
-print("Wings Analytics page loaded!")
-# -----------------------------
-# Click Analytics Card
-# -----------------------------
+# Wait until next page / analytics card is visible
 analytics_card = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -157,11 +144,18 @@ analytics_card = wait.until(
     ))
 )
 
-driver.execute_script("arguments[0].scrollIntoView({block:'center'});", analytics_card)
+# -----------------------------
+# Click Analytics Card
+# -----------------------------
+driver.execute_script(
+    "arguments[0].scrollIntoView({block:'center'});", analytics_card
+)
+
+wait.until(EC.element_to_be_clickable(analytics_card))
+
 driver.execute_script("arguments[0].click();", analytics_card)
 
 print("Analytics card clicked...")
-
 # -----------------------------
 # Wait for Loading to Finish
 # -----------------------------

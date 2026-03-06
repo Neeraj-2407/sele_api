@@ -241,12 +241,14 @@ print("✅ Descriptive page loaded successfully!")
 
 time.sleep(23)
 # -------------------------------
+time.sleep(23)
+
 import gzip
 import json
 import os
 import hashlib
 
-print("\n===== CAPTURING API PREVIEW DATA =====\n")
+print("\n===== CAPTURING REQUIRED API PREVIEW DATA =====\n")
 
 # =====================================================
 # CREATE FOLDER
@@ -255,10 +257,11 @@ print("\n===== CAPTURING API PREVIEW DATA =====\n")
 folder = "handler_preview"
 os.makedirs(folder, exist_ok=True)
 
-file_index = 1
+best_data = None
+max_components = 0
 
 # =====================================================
-# SAVE API RESPONSES
+# CAPTURE ONLY BEST API RESPONSE
 # =====================================================
 
 for request in driver.requests:
@@ -276,21 +279,40 @@ for request in driver.requests:
 
             data = json.loads(body)
 
-            file_name = os.path.join(folder, f"api_preview_{file_index}.json")
+            component_data = data.get("ComponentData")
 
-            with open(file_name, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
+            if component_data:
 
-            print(f"✅ Saved API response → {file_name}")
+                count = len(component_data)
+                print(f"Found ComponentData with {count} components")
 
-            file_index += 1
+                if count > max_components:
+                    max_components = count
+                    best_data = data
 
         except Exception as e:
             print("❌ Error reading response:", e)
 
 
 # =====================================================
-# PROCESS SAVED FILES
+# SAVE ONLY REQUIRED FILE
+# =====================================================
+
+if best_data:
+
+    file_path = os.path.join(folder, "required_component_data.json")
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(best_data, f, indent=4)
+
+    print(f"\n✅ Saved required component file → {file_path}")
+
+else:
+    print("❌ No ComponentData found")
+
+
+# =====================================================
+# PROCESS SAVED FILE
 # =====================================================
 
 print("\n===== PROCESSING COMPONENT DATA =====\n")
@@ -300,105 +322,67 @@ charts = {}
 pies = {}
 tables = {}
 
-seen_hashes = set()
-selected_files = []
+path = os.path.join(folder, "required_component_data.json")
 
-for file in os.listdir(folder):
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-    if not file.endswith(".json"):
-        continue
+component_data = data.get("ComponentData", [])
 
-    path = os.path.join(folder, file)
+for item in component_data:
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    key = item.get("Key")
+    value = item.get("Value", {})
 
-        component_data = data.get("ComponentData")
+    component_type = value.get("componentType")
 
-        # 1️⃣ Check ComponentData exists
-        if not component_data:
-            print(f"❌ No ComponentData in {file}")
-            continue
+    component = value.get("component", {})
+    comp_data = component.get("Data")
 
-        # 2️⃣ Remove duplicate ComponentData
-        component_hash = hashlib.md5(
-            json.dumps(component_data, sort_keys=True).encode()
-        ).hexdigest()
+    # =====================================================
+    # KPI CARDS
+    # =====================================================
 
-        if component_hash in seen_hashes:
-            print(f"⚠ Duplicate skipped → {file}")
-            continue
+    if component_type == "KPI":
 
-        seen_hashes.add(component_hash)
-        selected_files.append(file)
+        if isinstance(comp_data, dict):
 
-        print(f"✅ Processing → {file}")
+            label = comp_data.get("kpiLabel")
+            kpi_value = comp_data.get("kpiValue")
 
-        # =====================================================
-        # EXTRACT COMPONENTS
-        # =====================================================
+            if label:
+                cards[label] = kpi_value
 
-        for item in component_data:
+    # =====================================================
+    # CHARTS
+    # =====================================================
 
-            key = item.get("Key")
-            value = item.get("Value", {})
+    elif isinstance(comp_data, dict) and "series" in comp_data:
 
-            component_type = value.get("componentType")
+        charts[key] = {
+            "months": comp_data.get("xAxis"),
+            "series": comp_data.get("series")
+        }
 
-            component = value.get("component", {})
-            comp_data = component.get("Data")
+    # =====================================================
+    # PIE CHART
+    # =====================================================
 
-            # =====================================================
-            # KPI CARDS
-            # =====================================================
+    elif component_type == "Pie":
 
-            if component_type == "KPI":
+        if isinstance(comp_data, list):
+            pies[key] = comp_data
 
-                if isinstance(comp_data, dict):
+    # =====================================================
+    # TABLE
+    # =====================================================
 
-                    label = comp_data.get("kpiLabel")
-                    kpi_value = comp_data.get("kpiValue")
+    elif component_type == "Table":
 
-                    if label and label not in cards:
-                        cards[label] = kpi_value
+        table_data = comp_data.get("Data") if isinstance(comp_data, dict) else None
 
-            # =====================================================
-            # CHARTS (Line / MixTimeline / Bar etc)
-            # =====================================================
-
-            elif isinstance(comp_data, dict) and "series" in comp_data:
-
-                if key not in charts:
-                    charts[key] = {
-                        "months": comp_data.get("xAxis"),
-                        "series": comp_data.get("series")
-                    }
-
-            # =====================================================
-            # PIE CHART
-            # =====================================================
-
-            elif component_type == "Pie":
-
-                if isinstance(comp_data, list):
-
-                    if key not in pies:
-                        pies[key] = comp_data
-
-            # =====================================================
-            # TABLE
-            # =====================================================
-
-            elif component_type == "Table":
-
-                table_data = comp_data.get("Data") if isinstance(comp_data, dict) else None
-
-                if table_data and key not in tables:
-                    tables[key] = table_data
-
-    except Exception as e:
-        print(f"❌ Error reading {file}: {e}")
+        if table_data:
+            tables[key] = table_data
 
 
 # =====================================================
@@ -419,100 +403,33 @@ with open(os.path.join(folder, "pies.json"), "w") as f:
 with open(os.path.join(folder, "tables.json"), "w") as f:
     json.dump(tables, f, indent=4)
 
+
+# =====================================================
+# SUMMARY
+# =====================================================
+
 print("\n===== EXTRACTION SUMMARY =====\n")
 
 print("✅ Cards extracted:", len(cards))
 print("Card Names:")
-for name in cards.keys():
+for name in cards:
     print("   •", name)
 
 print("\n✅ Charts extracted:", len(charts))
 print("Chart Names:")
-for name in charts.keys():
+for name in charts:
     print("   •", name)
 
 print("\n✅ Pie charts extracted:", len(pies))
 print("Pie Chart Names:")
-for name in pies.keys():
+for name in pies:
     print("   •", name)
 
 print("\n✅ Tables extracted:", len(tables))
 print("Table Names:")
-for name in tables.keys():
+for name in tables:
     print("   •", name)
 
-print("\nSelected Files Used:")
-for f in selected_files:
-    print("   •", f)
-
-"""
-# Load JSON
-with open("api_preview_24.json", "r") as f:
-    data = json.load(f)
-
-# Extract ComponentData
-component_data = data.get("ComponentData")
-
-# LLM API
-url = "http://192.168.0.200:11434/api/generate"
-
-payload = {
-    "model": "llama3.2:3b",
-    "prompt": f"Summarize following ComponentData into a clear business summary:\n\n{json.dumps(component_data, indent=2)}",
-    "stream": False
-}
-
-try:
-    response = requests.post(url, json=payload)
-
-    if response.status_code == 200:
-        result = response.json()
-        final_summary = result.get("response", "").strip()
-
-        if not final_summary:
-            print("❌ Summary is empty.")
-            exit()
-
-        print("✅ Summary Generated Successfully")
-        print(final_summary)
-
-    else:
-        print("❌ API Error:", response.status_code)
-        print(response.text)
-        exit()
-
-except Exception as e:
-    print("❌ Exception during summary:", e)
-    exit()
-
-
-# =====================================================
-# SEND EMAIL WITH SUMMARY
-# =====================================================
-
-try:
-    email_payload = {
-        "email": "neerajwings1@gmail.com",
-        "cc": "neerajsainandigama@gmail.com",
-        "subject": "Automated Business Summary Report",
-        "message": final_summary   # 🔑 summarized text goes here
-    }
-
-    email_response = requests.post(
-        "http://127.0.0.1:8000/send-email/",
-        json=email_payload
-    )
-
-    if email_response.status_code == 200:
-        print("✅ Email sent successfully")
-    else:
-        print("❌ Failed to send email")
-        print("Status Code:", email_response.status_code)
-        print("Response:", email_response.text)
-
-except Exception as e:
-    print("❌ Error sending email:", e)
-"""
 input("Press Enter to close browser...")
 
 driver.quit()

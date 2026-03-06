@@ -7,15 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import time
 import requests
-import json
-# start browser
-
-# -------------------------------
-# your existing selenium steps
-# login → Analytics → Enquiries → Sales → Descriptive
-
 
 # -----------------------------
 # Start Browser
@@ -26,7 +18,6 @@ driver.maximize_window()
 driver.get("http://localhost:4200/")
 
 wait = WebDriverWait(driver, 20)
-
 # -----------------------------
 # Enter Company Name
 # -----------------------------
@@ -252,10 +243,23 @@ time.sleep(23)
 # -------------------------------
 import gzip
 import json
+import os
+import hashlib
 
 print("\n===== CAPTURING API PREVIEW DATA =====\n")
 
+# =====================================================
+# CREATE FOLDER
+# =====================================================
+
+folder = "handler_preview"
+os.makedirs(folder, exist_ok=True)
+
 file_index = 1
+
+# =====================================================
+# SAVE API RESPONSES
+# =====================================================
 
 for request in driver.requests:
 
@@ -264,7 +268,7 @@ for request in driver.requests:
         try:
             body = request.response.body
 
-            # Decompress if gzip
+            # decompress if gzip
             if request.response.headers.get("Content-Encoding", "") == "gzip":
                 body = gzip.decompress(body)
 
@@ -272,17 +276,243 @@ for request in driver.requests:
 
             data = json.loads(body)
 
-            file_name = f"api_preview_{file_index}.json"
+            file_name = os.path.join(folder, f"api_preview_{file_index}.json")
 
             with open(file_name, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
 
-            print(f"✅ Saved API response to {file_name}")
+            print(f"✅ Saved API response → {file_name}")
 
             file_index += 1
 
         except Exception as e:
             print("❌ Error reading response:", e)
 
+
+# =====================================================
+# PROCESS SAVED FILES
+# =====================================================
+
+print("\n===== PROCESSING COMPONENT DATA =====\n")
+
+cards = {}
+charts = {}
+pies = {}
+tables = {}
+
+seen_hashes = set()
+selected_files = []
+
+for file in os.listdir(folder):
+
+    if not file.endswith(".json"):
+        continue
+
+    path = os.path.join(folder, file)
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        component_data = data.get("ComponentData")
+
+        # 1️⃣ Check ComponentData exists
+        if not component_data:
+            print(f"❌ No ComponentData in {file}")
+            continue
+
+        # 2️⃣ Remove duplicate ComponentData
+        component_hash = hashlib.md5(
+            json.dumps(component_data, sort_keys=True).encode()
+        ).hexdigest()
+
+        if component_hash in seen_hashes:
+            print(f"⚠ Duplicate skipped → {file}")
+            continue
+
+        seen_hashes.add(component_hash)
+        selected_files.append(file)
+
+        print(f"✅ Processing → {file}")
+
+        # =====================================================
+        # EXTRACT COMPONENTS
+        # =====================================================
+
+        for item in component_data:
+
+            key = item.get("Key")
+            value = item.get("Value", {})
+
+            component_type = value.get("componentType")
+
+            component = value.get("component", {})
+            comp_data = component.get("Data")
+
+            # =====================================================
+            # KPI CARDS
+            # =====================================================
+
+            if component_type == "KPI":
+
+                if isinstance(comp_data, dict):
+
+                    label = comp_data.get("kpiLabel")
+                    kpi_value = comp_data.get("kpiValue")
+
+                    if label and label not in cards:
+                        cards[label] = kpi_value
+
+            # =====================================================
+            # CHARTS (Line / MixTimeline / Bar etc)
+            # =====================================================
+
+            elif isinstance(comp_data, dict) and "series" in comp_data:
+
+                if key not in charts:
+                    charts[key] = {
+                        "months": comp_data.get("xAxis"),
+                        "series": comp_data.get("series")
+                    }
+
+            # =====================================================
+            # PIE CHART
+            # =====================================================
+
+            elif component_type == "Pie":
+
+                if isinstance(comp_data, list):
+
+                    if key not in pies:
+                        pies[key] = comp_data
+
+            # =====================================================
+            # TABLE
+            # =====================================================
+
+            elif component_type == "Table":
+
+                table_data = comp_data.get("Data") if isinstance(comp_data, dict) else None
+
+                if table_data and key not in tables:
+                    tables[key] = table_data
+
+    except Exception as e:
+        print(f"❌ Error reading {file}: {e}")
+
+
+# =====================================================
+# SAVE EXTRACTED DATA
+# =====================================================
+
+print("\n===== SAVING EXTRACTED DATA =====\n")
+
+with open(os.path.join(folder, "cards.json"), "w") as f:
+    json.dump(cards, f, indent=4)
+
+with open(os.path.join(folder, "charts.json"), "w") as f:
+    json.dump(charts, f, indent=4)
+
+with open(os.path.join(folder, "pies.json"), "w") as f:
+    json.dump(pies, f, indent=4)
+
+with open(os.path.join(folder, "tables.json"), "w") as f:
+    json.dump(tables, f, indent=4)
+
+print("\n===== EXTRACTION SUMMARY =====\n")
+
+print("✅ Cards extracted:", len(cards))
+print("Card Names:")
+for name in cards.keys():
+    print("   •", name)
+
+print("\n✅ Charts extracted:", len(charts))
+print("Chart Names:")
+for name in charts.keys():
+    print("   •", name)
+
+print("\n✅ Pie charts extracted:", len(pies))
+print("Pie Chart Names:")
+for name in pies.keys():
+    print("   •", name)
+
+print("\n✅ Tables extracted:", len(tables))
+print("Table Names:")
+for name in tables.keys():
+    print("   •", name)
+
+print("\nSelected Files Used:")
+for f in selected_files:
+    print("   •", f)
+
+"""
+# Load JSON
+with open("api_preview_24.json", "r") as f:
+    data = json.load(f)
+
+# Extract ComponentData
+component_data = data.get("ComponentData")
+
+# LLM API
+url = "http://192.168.0.200:11434/api/generate"
+
+payload = {
+    "model": "llama3.2:3b",
+    "prompt": f"Summarize following ComponentData into a clear business summary:\n\n{json.dumps(component_data, indent=2)}",
+    "stream": False
+}
+
+try:
+    response = requests.post(url, json=payload)
+
+    if response.status_code == 200:
+        result = response.json()
+        final_summary = result.get("response", "").strip()
+
+        if not final_summary:
+            print("❌ Summary is empty.")
+            exit()
+
+        print("✅ Summary Generated Successfully")
+        print(final_summary)
+
+    else:
+        print("❌ API Error:", response.status_code)
+        print(response.text)
+        exit()
+
+except Exception as e:
+    print("❌ Exception during summary:", e)
+    exit()
+
+
+# =====================================================
+# SEND EMAIL WITH SUMMARY
+# =====================================================
+
+try:
+    email_payload = {
+        "email": "neerajwings1@gmail.com",
+        "cc": "neerajsainandigama@gmail.com",
+        "subject": "Automated Business Summary Report",
+        "message": final_summary   # 🔑 summarized text goes here
+    }
+
+    email_response = requests.post(
+        "http://127.0.0.1:8000/send-email/",
+        json=email_payload
+    )
+
+    if email_response.status_code == 200:
+        print("✅ Email sent successfully")
+    else:
+        print("❌ Failed to send email")
+        print("Status Code:", email_response.status_code)
+        print("Response:", email_response.text)
+
+except Exception as e:
+    print("❌ Error sending email:", e)
+"""
 input("Press Enter to close browser...")
+
 driver.quit()

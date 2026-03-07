@@ -277,8 +277,6 @@ print("Next page loaded!")
 # -------------------------------
 # Start Screenshot Process
 # -------------------------------
-
-import json
 import os
 import time
 from selenium.webdriver.common.by import By
@@ -288,40 +286,34 @@ from selenium.webdriver.support import expected_conditions as EC
 folder_name = "dashboard_screenshots"
 os.makedirs(folder_name, exist_ok=True)
 
-# load json
-with open("names.json") as f:
-    data = json.load(f)
-
-labels = data["labels"]
-
 wait = WebDriverWait(driver, 20)
 
-for key, label_text in labels.items():
-    try:
-        # locate the title
-        title_element = wait.until(
-            EC.presence_of_element_located(
-                (By.XPATH, f"//*[contains(text(),'{label_text}')]")
-            )
-        )
+# wait until grid loads
+wait.until(EC.presence_of_element_located((By.CLASS_NAME, "chart-grid")))
 
-        # go to parent container (widget)
-        widget = title_element.find_element(By.XPATH, "./ancestor::div[2]")
+# get all widgets
+widgets = driver.find_elements(By.CSS_SELECTOR, ".chart-grid .chart-box")
 
-        # scroll to widget
-        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", widget)
-        time.sleep(2)
+print("Total widgets:", len(widgets))
 
-        # screenshot path
-        path = os.path.join(folder_name, f"{key}.png")
+for i, widget in enumerate(widgets, start=1):
 
-        # capture entire widget
-        widget.screenshot(path)
+    # scroll widget into view
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block:'center'});",
+        widget
+    )
 
-        print(f"Captured content for {label_text}")
+    time.sleep(2)
 
-    except Exception as e:
-        print(f"Could not capture {label_text}")
+    # screenshot path
+    path = os.path.join(folder_name, f"widget_{i}.png")
+
+    # capture screenshot
+    widget.screenshot(path)
+
+    print(f"Captured widget {i}")
+
 input("Press Enter to close browser...")
 
 driver.quit()

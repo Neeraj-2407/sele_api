@@ -1,26 +1,25 @@
 from seleniumwire import webdriver
-import json
-import time
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import requests
+import os
+import gzip
+import json
+import time
 
-# -----------------------------
 # Start Browser
-# -----------------------------
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver.maximize_window()
 
 driver.get("http://localhost:4200/")
 
 wait = WebDriverWait(driver, 20)
-# -----------------------------
+
 # Enter Company Name
-# -----------------------------
+
 company_name_input = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -30,9 +29,8 @@ company_name_input = wait.until(
 company_name_input.clear()
 company_name_input.send_keys("Analytics")
 
-# -----------------------------
 # Enter User Name
-# -----------------------------
+
 user_name_input = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -42,9 +40,8 @@ user_name_input = wait.until(
 user_name_input.clear()
 user_name_input.send_keys("super user")
 
-# -----------------------------
 # Enter Password
-# -----------------------------
+
 password_input = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -54,9 +51,8 @@ password_input = wait.until(
 password_input.clear()
 password_input.send_keys("a")
 
-# -----------------------------
 # Click Sign In
-# -----------------------------
+
 sign_in_button = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -67,24 +63,22 @@ sign_in_button.click()
 
 print("Sign In clicked... waiting for dashboard")
 
-# -----------------------------
 # Handle Alert Popup
-# -----------------------------
+
 from selenium.common.exceptions import NoAlertPresentException
 import time
 
 print("Sign In clicked... waiting for dashboard")
 
-# -----------------------------
 # Wait while loading panel exists
-# -----------------------------
+
 while True:
     try:
         # Check for alert popup
         alert = driver.switch_to.alert
-        print("⚠ Alert detected:", alert.text)
+        print(" Alert detected:", alert.text)
         alert.accept()
-        print("✅ Alert accepted")
+        print(" Alert accepted")
 
     except NoAlertPresentException:
         pass
@@ -98,13 +92,13 @@ while True:
     if len(loading_elements) == 0:
         break
 
-    print("⏳ Loading still in progress...")
+    print(" Loading still in progress...")
     time.sleep(2)
 
-print("✅ Loading finished")
-# -----------------------------
+print(" Loading finished")
+
 # Wait Until Login Completes
-# -----------------------------
+
 logout_button = WebDriverWait(driver, 60).until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -112,19 +106,17 @@ logout_button = WebDriverWait(driver, 60).until(
     ))
 )
 
-print("✅ Login successful!")
+print(" Login successful!")
 
-# -----------------------------
+
 # Click Logout
-# -----------------------------
+
 driver.execute_script("arguments[0].click();", logout_button)
 
 print("Logout clicked successfully!")
 
-# -----------------------------
-# Click Wings Analytics Button
-# -----------------------------
 
+# Click Wings Analytics Button
 
 wings_analytics_button= wait.until(
     EC.element_to_be_clickable((
@@ -138,6 +130,7 @@ driver.execute_script("arguments[0].click();", wings_analytics_button)
 print("Wings Analytics clicked")
 
 # Wait until next page / analytics card is visible
+
 analytics_card = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -145,9 +138,8 @@ analytics_card = wait.until(
     ))
 )
 
-# -----------------------------
 # Click Analytics Card
-# -----------------------------
+
 driver.execute_script(
     "arguments[0].scrollIntoView({block:'center'});", analytics_card
 )
@@ -157,9 +149,9 @@ wait.until(EC.element_to_be_clickable(analytics_card))
 driver.execute_script("arguments[0].click();", analytics_card)
 
 print("Analytics card clicked...")
-# -----------------------------
+
 # Wait for Loading to Finish
-# -----------------------------
+
 try:
     WebDriverWait(driver, 60).until(
         EC.invisibility_of_element_located((
@@ -171,9 +163,8 @@ try:
 except:
     print("Loading element not detected or already finished")
 
-# -----------------------------
 # Wait for Enquiries Section
-# -----------------------------
+
 enquiries_button = WebDriverWait(driver, 60).until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -194,9 +185,8 @@ wait.until(
     ))
 )
 
-# -----------------------------
 # Click Sales
-# -----------------------------
+
 sales_button = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -209,9 +199,8 @@ driver.execute_script("arguments[0].click();", sales_button)
 
 print("Sales button clicked successfully!")
 
-# -----------------------------
 # Click Descriptive (Full XPath)
-# -----------------------------
+
 descriptive_button = wait.until(
     EC.element_to_be_clickable((
         By.XPATH,
@@ -237,22 +226,13 @@ wait.until(
 
 
 
-print("✅ Descriptive page loaded successfully!")
+print(" Descriptive page loaded successfully!")
 
 time.sleep(23)
-# -------------------------------
-time.sleep(23)
-
-import gzip
-import json
-import os
-import hashlib
 
 print("\n===== CAPTURING REQUIRED API PREVIEW DATA =====\n")
 
-# =====================================================
 # CREATE FOLDER
-# =====================================================
 
 folder = "handler_preview"
 os.makedirs(folder, exist_ok=True)
@@ -260,9 +240,7 @@ os.makedirs(folder, exist_ok=True)
 best_data = None
 max_components = 0
 
-# =====================================================
-# CAPTURE ONLY BEST API RESPONSE
-# =====================================================
+# CAPTURE REQUIRED API RESPONSE
 
 for request in driver.requests:
 
@@ -291,29 +269,23 @@ for request in driver.requests:
                     best_data = data
 
         except Exception as e:
-            print("❌ Error reading response:", e)
+            print(" Error reading response:", e)
 
+# SAVE ONLY REQUIRED JSON FILE
 
-# =====================================================
-# SAVE ONLY REQUIRED FILE
-# =====================================================
+file_path = os.path.join(folder, "required_component_data.json")
 
 if best_data:
-
-    file_path = os.path.join(folder, "required_component_data.json")
 
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(best_data, f, indent=4)
 
-    print(f"\n✅ Saved required component file → {file_path}")
+    print(f"\n Saved required file → {file_path}")
 
 else:
-    print("❌ No ComponentData found")
+    print(" No ComponentData found")
 
-
-# =====================================================
-# PROCESS SAVED FILE
-# =====================================================
+# PROCESS COMPONENT DATA
 
 print("\n===== PROCESSING COMPONENT DATA =====\n")
 
@@ -322,12 +294,7 @@ charts = {}
 pies = {}
 tables = {}
 
-path = os.path.join(folder, "required_component_data.json")
-
-with open(path, "r", encoding="utf-8") as f:
-    data = json.load(f)
-
-component_data = data.get("ComponentData", [])
+component_data = best_data.get("ComponentData", [])
 
 for item in component_data:
 
@@ -339,10 +306,8 @@ for item in component_data:
     component = value.get("component", {})
     comp_data = component.get("Data")
 
-    # =====================================================
     # KPI CARDS
-    # =====================================================
-
+  
     if component_type == "KPI":
 
         if isinstance(comp_data, dict):
@@ -353,9 +318,7 @@ for item in component_data:
             if label:
                 cards[label] = kpi_value
 
-    # =====================================================
     # CHARTS
-    # =====================================================
 
     elif isinstance(comp_data, dict) and "series" in comp_data:
 
@@ -364,18 +327,14 @@ for item in component_data:
             "series": comp_data.get("series")
         }
 
-    # =====================================================
     # PIE CHART
-    # =====================================================
 
     elif component_type == "Pie":
 
         if isinstance(comp_data, list):
             pies[key] = comp_data
 
-    # =====================================================
     # TABLE
-    # =====================================================
 
     elif component_type == "Table":
 
@@ -384,48 +343,26 @@ for item in component_data:
         if table_data:
             tables[key] = table_data
 
-
-# =====================================================
-# SAVE EXTRACTED DATA
-# =====================================================
-
-print("\n===== SAVING EXTRACTED DATA =====\n")
-
-with open(os.path.join(folder, "cards.json"), "w") as f:
-    json.dump(cards, f, indent=4)
-
-with open(os.path.join(folder, "charts.json"), "w") as f:
-    json.dump(charts, f, indent=4)
-
-with open(os.path.join(folder, "pies.json"), "w") as f:
-    json.dump(pies, f, indent=4)
-
-with open(os.path.join(folder, "tables.json"), "w") as f:
-    json.dump(tables, f, indent=4)
-
-
-# =====================================================
-# SUMMARY
-# =====================================================
+# PRINT SUMMARY
 
 print("\n===== EXTRACTION SUMMARY =====\n")
 
-print("✅ Cards extracted:", len(cards))
+print(" Cards extracted:", len(cards))
 print("Card Names:")
 for name in cards:
     print("   •", name)
 
-print("\n✅ Charts extracted:", len(charts))
+print("\n Charts extracted:", len(charts))
 print("Chart Names:")
 for name in charts:
     print("   •", name)
 
-print("\n✅ Pie charts extracted:", len(pies))
+print("\n Pie charts extracted:", len(pies))
 print("Pie Chart Names:")
 for name in pies:
     print("   •", name)
 
-print("\n✅ Tables extracted:", len(tables))
+print("\n Tables extracted:", len(tables))
 print("Table Names:")
 for name in tables:
     print("   •", name)

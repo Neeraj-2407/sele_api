@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-
+import os
 # Start Browser
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver.maximize_window()
@@ -227,12 +227,6 @@ print(" Descriptive page loaded successfully!")
 # CLICK NEXT BUTTON
 # =====================================================
 
-import time
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from PIL import Image
-import io
 
 wait = WebDriverWait(driver, 30)
 
@@ -284,63 +278,50 @@ print("Next page loaded!")
 # Start Screenshot Process
 # -------------------------------
 
-# Scroll to top first
-driver.execute_script("window.scrollTo(0,0)")
-time.sleep(2)
-
+import json
 import os
 import time
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-print("Starting smart scrolling screenshots...")
+folder_name = "dashboard_screenshots"
+os.makedirs(folder_name, exist_ok=True)
 
-# folder for screenshots
-os.makedirs("dashboard_screenshots", exist_ok=True)
+# load json
+with open("names.json") as f:
+    data = json.load(f)
 
-# find scrollable container
-scroll_container = driver.find_element(By.CLASS_NAME, "content-area")
+labels = data["labels"]
 
-# viewport height of container
-viewport_height = driver.execute_script(
-    "return arguments[0].clientHeight", scroll_container
-)
+wait = WebDriverWait(driver, 20)
 
-# total scrollable height
-total_height = driver.execute_script(
-    "return arguments[0].scrollHeight", scroll_container
-)
+for key, label_text in labels.items():
+    try:
+        # locate the title
+        title_element = wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, f"//*[contains(text(),'{label_text}')]")
+            )
+        )
 
-scroll_position = 0
-screenshot_index = 1
+        # go to parent container (widget)
+        widget = title_element.find_element(By.XPATH, "./ancestor::div[2]")
 
-while scroll_position < total_height:
+        # scroll to widget
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", widget)
+        time.sleep(2)
 
-    # scroll to position
-    driver.execute_script(
-        "arguments[0].scrollTop = arguments[1]",
-        scroll_container,
-        scroll_position
-    )
+        # screenshot path
+        path = os.path.join(folder_name, f"{key}.png")
 
-    time.sleep(2)
+        # capture entire widget
+        widget.screenshot(path)
 
-    # screenshot
-    file_name = f"dashboard_screenshots/screenshot_{screenshot_index}.png"
-    driver.save_screenshot(file_name)
+        print(f"Captured content for {label_text}")
 
-    print(f"Saved {file_name}")
-
-    # move exactly one viewport down (no overlap)
-    scroll_position += viewport_height
-
-    screenshot_index += 1
-
-    # update height (important for lazy loading dashboards)
-    total_height = driver.execute_script(
-        "return arguments[0].scrollHeight", scroll_container
-    )
-
-print("✅ Screenshots captured until page end")
+    except Exception as e:
+        print(f"Could not capture {label_text}")
 input("Press Enter to close browser...")
 
 driver.quit()

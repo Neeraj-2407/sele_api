@@ -277,6 +277,7 @@ print("Next page loaded!")
 # -------------------------------
 # Start Screenshot Process
 # -------------------------------
+
 import os
 import time
 from selenium.webdriver.common.by import By
@@ -288,31 +289,59 @@ os.makedirs(folder_name, exist_ok=True)
 
 wait = WebDriverWait(driver, 20)
 
-# wait until grid loads
-wait.until(EC.presence_of_element_located((By.CLASS_NAME, "chart-grid")))
+# wait until sections appear
+sections = wait.until(
+    EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".section"))
+)
 
-# get all widgets
-widgets = driver.find_elements(By.CSS_SELECTOR, ".chart-grid .chart-box")
+for section in sections:
 
-print("Total widgets:", len(widgets))
+    try:
+        # get section title
+        title = section.find_element(By.CSS_SELECTOR, ".sec-title span").text.strip()
+        grid = section.find_element(By.CSS_SELECTOR, ".chart-grid")
 
-for i, widget in enumerate(widgets, start=1):
+        print("Processing:", title)
 
-    # scroll widget into view
-    driver.execute_script(
-        "arguments[0].scrollIntoView({block:'center'});",
-        widget
-    )
+        # scroll section into view
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block:'center'});",
+            section
+        )
 
-    time.sleep(2)
+        time.sleep(2)
 
-    # screenshot path
-    path = os.path.join(folder_name, f"widget_{i}.png")
+        # -------- KEY METRICS --------
+        if title == "Key Metrics":
 
-    # capture screenshot
-    widget.screenshot(path)
+            path = os.path.join(folder_name, "key_metrics.png")
+            grid.screenshot(path)
 
-    print(f"Captured widget {i}")
+            print("Captured Key Metrics")
+
+        # -------- OTHER SECTIONS --------
+        else:
+
+            widgets = grid.find_elements(By.CSS_SELECTOR, ".chart-box")
+
+            for i, widget in enumerate(widgets, start=1):
+
+                driver.execute_script(
+                    "arguments[0].scrollIntoView({block:'center'});",
+                    widget
+                )
+
+                time.sleep(1)
+
+                filename = f"{title.replace(' ', '_').lower()}_{i}.png"
+                path = os.path.join(folder_name, filename)
+
+                widget.screenshot(path)
+
+                print("Captured", filename)
+
+    except Exception as e:
+        print("Error:", e)
 
 input("Press Enter to close browser...")
 
